@@ -1,0 +1,6 @@
+{
+  "name": "Contentful Extension Tables",
+  "id": "contentful-extension-tables",
+  "fieldTypes": ["Object"],
+  "srcdoc": "./index.html"
+}

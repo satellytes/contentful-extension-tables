@@ -1,0 +1,31 @@
+{
+  "name": "contentful-extension-tables",
+  "version": "1.0.0",
+  "description": "A Contentful UI-Extension to add editable tabular data",
+  "main": "index.js",
+  "engines": {
+    "node": ">=14.16.1"
+  },
+  "scripts": {
+    "setup": "contentful-extension create --space-id ${CONTENTFUL_SPACE_ID}",
+    "update": "contentful-extension update --space-id ${CONTENTFUL_SPACE_ID} --force"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chunksnbits/contentful-extension-tables.git"
+  },
+  "keywords": [
+    "contentful",
+    "extension",
+    "tables"
+  ],
+  "bugs": {
+    "url": "https://github.com/chunksnbits/contentful-extension-tables/issues"
+  },
+  "homepage": "https://github.com/chunksnbits/contentful-extension-tables#readme",
+  "author": "Daniel Eissing <mail.daniel.eissing@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "contentful-extension-cli": "^2.0.0"
+  }
+}

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tables for Contentful UI</title>
+    <link
+      rel="stylesheet"
+      href="https://contentful.github.io/ui-extensions-sdk/cf-extension.css"
+    />
+    <script src="https://contentful.github.io/ui-extensions-sdk/cf-extension-api.js"></script>
+    <style>
+      html, body {
+        padding: 0;
+        margin: 0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      #contentful-table {
+        display: inline-block;
+        position: relative;
+        padding: 0 28px 28px 0;
+      }
+
+      #contentful-table,
+      #contentful-table * {
+        box-sizing: border-box;
+      }
+
+      table {
+        border-collapse: collapse;
+        table-layout: auto;
+        width: 100%;
+      }
+
+      td, th {
+        border: 1px solid #cbd5e0;
+        color: #1a202c;
+        padding: 0;
+      }
+
+      th {
+        color: #2d3748;
+        padding: 0;
+      }
+
+      .contentful-table__input {
+        border: none;
+        color: #1a202c;
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 0.5rem 1rem;
+        text-align: left;
+        width: 100%;
+      }
+
+      th .contentful-table__input {
+        font-weight: bold;
+        text-align: left;
+        background-color: #f7fafc;
+      }
+
+      .contentful-table__input:hover {
+        background-color: #f7fafc;
+      }
+
+      th .contentful-table__input:hover {
+        background-color: #e5eef5;
+      }
+
+      .contentful-table__input:focus,
+      th .contentful-table__input:focus {
+        background-color: #e2e8f0;
+      }
+
+      .contentful-table__actions {
+        position: relative;
+      }
+
+      .contentful-table__actions th,
+      .contentful-table__actions td {
+        height: 1px;
+        background-color: #cbd5e0;
+      }
+
+      .content-table__column-actions {
+        width: 1px;
+        background-color: #cbd5e0;
+      }
+
+      .contentful-table__actions-layout {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        align-items: center;
+        transform: translateY(0);
+      }
+
+      .contentful-table__action {
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 20px;
+        height: 20px;
+        color: black;
+        font-weight: bold;
+        border: 1px solid lightgrey;
+        background: white;
+        cursor: pointer;
+      }
+
+      .contentful-table__action[disabled] {
+        pointer-events: none;
+        color: grey;
+        opacity: 0.5;
+      }
+
+      .contentful-table__action:first-child {
+        top: 0;
+        right: 28px;
+      }
+
+      .contentful-table__action:last-child {
+        top: 0;
+        right: 4px;
+      }
+
+      .content-table__column-actions .contentful-table__action:first-child {
+        right: -20px;
+        transform: translate(0, -12px);
+      }
+      .content-table__column-actions .contentful-table__action:last-child {
+        right: -20px;
+        transform: translate(0, 12px);
+      }
+
+      .contentful-table__action:hover {
+        background: lightgrey;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="contentful-table">
+      <table></table>
+    </div>
+
+    <script>
+      function setupTableModel({ numberOfRows, header }) {
+        const numerOfColumns = Array.isArray(header) && Array.isArray(header[0]) ? header[0].length : 3;
+
+        const tableData = [];
+        for (let index = 0; index < numberOfRows; ++index) {
+          tableData.push(new Array(numerOfColumns));
+        }
+
+        return {
+          header,
+          tableData,
+        };
+      }
+
+      const getNumberOfColumns = ({ header = [], tableData }) => {
+        const numberOfHeaderColumns = header && header[0] ? header[0].length : 0;
+        const numberOfTableDateColumns = tableData && tableData[0] ? tableData[0].length : 0;
+
+        return Math.max(numberOfHeaderColumns, numberOfTableDateColumns);
+      }
+
+      const getNumberOfRows = ({ header = [], tableData }) => {
+        const numberOfHeaderRows = header ? header.length : 0;
+        const numberOfTableDateRows = tableData ? tableData.length : 0;
+
+        return numberOfHeaderRows + numberOfTableDateRows;
+      }
+
+      function appendRowActions(element, type, numberOfColumns, disabled) {
+        const disabledAttribute = disabled ? "disabled" : "";
+
+        element.insertRow().outerHTML = `
+          <tr class="contentful-table__actions" data-type="${type}">
+            <th colspan="${numberOfColumns}">
+              <div class="contentful-table__actions-layout">
+                <button class="contentful-table__action"
+                  data-type="add-${type}"
+                  title="Add ${type}">+</button>
+
+                <button class="contentful-table__action"
+                  data-type="remove-${type}"
+                  title="Remove ${type}" ${disabledAttribute}>-</button>
+              </div>
+            </th>
+          </tr>
+        `;
+      }
+
+      function appendColumnActions(row, numberOfRows, disabled) {
+        if (!row || !row.insertCell) {
+          return;
+        }
+
+        const disabledAttribute = disabled ? "disabled" : "";
+
+        // +1 to account for the header actions
+        row.insertCell().outerHTML = `
+          <th rowspan="${numberOfRows + 1}" class="content-table__column-actions">
+            <div class="contentful-table__actions-layout">
+              <button class="contentful-table__action"
+                data-type="add-column"
+                title="Add column">+</button>
+
+              <button class="contentful-table__action"
+                data-type="remove-column"
+                title="Remove column" ${disabledAttribute}>-</button>
+            </div>
+          </th>
+        `;
+      }
+
+      function createTableElement(element, data) {
+        let { header, tableData } = data;
+
+        while (element.rows.length > 0) {
+          element.deleteRow(0);
+        }
+
+        // Doing it explicitely (instea to covers null as well.
+        header = Array.isArray(header) ? header : [];
+        tableData = Array.isArray(tableData) ? tableData : [];
+
+        const numberOfColumns = getNumberOfColumns(data);
+        const numberOfRows = getNumberOfRows(data);
+
+        header.forEach((entry, rowIndex) => {
+          const row = element.insertRow();
+
+          for (let columnIndex = 0; columnIndex < numberOfColumns; columnIndex++) {
+            const cellContent = header[rowIndex][columnIndex] || "";
+            row.insertCell().outerHTML = `
+              <th><input class="contentful-table__input" data-row="${rowIndex}" data-column="${columnIndex}" data-type="header" value="${cellContent}" /></th>`;
+          }
+        });
+
+        appendRowActions(element, "header-row", numberOfColumns, header.length === 0);
+
+        tableData.forEach((entry, rowIndex) => {
+          const row = element.insertRow();
+
+          for (let columnIndex = 0; columnIndex < numberOfColumns; columnIndex++) {
+            const cellContent = tableData[rowIndex][columnIndex] || "";
+            row.insertCell().outerHTML = `
+              <td><input class="contentful-table__input" data-row="${rowIndex}" data-column="${columnIndex}" data-type="tableData" value="${cellContent}" /></td>`;
+          }
+        });
+
+        appendRowActions(element, "row", numberOfColumns, tableData.length === 0);
+        appendColumnActions(element.rows[0], numberOfRows, numberOfColumns <= 1);
+      }
+
+      window.contentfulExtension.init(extension => {
+        let value = extension.field.getValue();
+
+        if (!value) {
+          value = setupTableModel({
+            header: [["Column 1", "Column 2", null, null]], // 4 columns
+            numberOfRows: 3,
+          });
+        }
+
+        if (!Array.isArray(value.header)) {
+          value.header = [];
+        }
+
+        const handleContentActionClick = (event) => {
+          if (!event.target.classList.contains("contentful-table__action")) {
+            return;
+          }
+
+          const numberOfColumns = getNumberOfColumns(value);
+          const actionName = event.target.dataset.type;
+
+          console.log('+++ actionName', actionName, numberOfColumns);
+
+          switch (actionName) {
+            case "add-header-row":
+              value.header.push(new Array(numberOfColumns).fill(null));
+              break;
+
+            case "remove-header-row":
+              value.header.splice(-1, 1);
+              break;
+
+            case "add-row":
+              value.tableData.push(new Array(numberOfColumns).fill(null));
+              break;
+
+            case "remove-row":
+              value.tableData.splice(-1, 1);
+              break;
+
+            case "add-column":
+              value.header.forEach(row => row.push(null));
+              value.tableData.forEach(row => row.push(null));
+              break;
+
+            case "remove-column":
+              value.header.forEach(row => row.splice(-1, 1));
+              value.tableData.forEach(row => row.splice(-1, 1));
+              break;
+
+            default:
+              console.warn(`Invalid action "${actionName}" for event: `, event)
+              return;
+          }
+
+          createTableElement(document.querySelector("table"), value);
+
+          extension.window.updateHeight();
+          extension.field.setValue(value);
+        };
+
+        const handleInputValueChange = (event) => {
+          if (!event.target.classList.contains("contentful-table__input")) {
+            return false;
+          }
+
+          const type = event.target.dataset.type;
+          const row = event.target.dataset.row;
+          const column = event.target.dataset.column;
+
+          value[type][row][column] = event.target.value;
+
+          extension.field.setValue(value);
+        };
+
+        window.addEventListener("click", handleContentActionClick, true);
+        window.addEventListener("change", handleInputValueChange, true);
+
+        createTableElement(document.querySelector("table"), value);
+
+        extension.window.updateHeight();
+      });
+    </script>
+  </body>
+</html>
